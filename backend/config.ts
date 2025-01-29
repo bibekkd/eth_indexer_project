@@ -1,0 +1,1 @@
+export const SEED = "bag balance balcony ball bamboo banana abandon ability able about above absent"
