@@ -1,9 +1,11 @@
 import express, { json } from 'express';
 import pg from "pg";
-import { HDNodeWallet, Wallet } from "ethers";
+import { HDNodeWallet } from "ethers6";
+import { mnemonicToSeedSync } from "bip39";
+import { MNUEMONICS } from './config';
 
 
-console.log("heooolo")
+const seed = mnemonicToSeedSync(MNUEMONICS)
 
 const app = express();
 
@@ -12,13 +14,37 @@ interface User {
     password: string
 }
 
+const Pool = require('pg').Pool
+const pool = new Pool({
+    user: 'bibek',
+    host: 'localhost',
+    database: 'postgres',
+    password: 'password',
+    port: 5432,
+})
+
 app.use(express.json());
 
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
+    
     const {username, password} : User = req.body;
+    
+    const result = await pool.query('INSERT INTO binanceUser (username, password, privateKey, depositAddress, balance) VALUES ($1, $2, $3, $4, $5) RETURNING id', [username, password, "", "", 0])
+    
+    const userId = result.rows[0].id;
 
+    const hdNode = HDNodeWallet.fromSeed(seed);
+    const child = hdNode.derivePath(`m/44'/60'/${userId}'/0'`);
+
+    await pool.query('UPDATE binanceUser SET privateKey=$1, depositAddress = $2 WHERE id=$3', [child.privateKey, child.address, userId]);
+    console.log(`-----`)
+    console.log(`Public Key: ${child.publicKey}`)
+    console.log(`Address: ${child.address}`)
+    console.log(`Private Key: ${child.privateKey}`)
+    console.log(`-----`)
+    
     res.json({
-        username,
+        userId
     })
 })
 
